@@ -1,0 +1,127 @@
+﻿@{
+    ViewBag.Title = "Private";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<style>
+    .border {
+        border-bottom: solid gray 1px;
+    }
+
+    .smileys {
+        height: 15px;
+    }
+</style>
+
+<div style="border: solid gray; height: 95%;">
+    <input type="hidden" id="displayname" />
+    <div style="height: 80%;">
+        <div id="chats" style="width: 80%; float: left;"></div>
+        <div id="onlineList" style="width: 19%; float: right; border-left: solid red 2px; height: 100%;">
+            <div style="font-size: 20px; border-bottom: double">Online Users</div>
+        </div>
+    </div>
+    <div style="height: 19%; border-top: double black; background-color: lightgray">
+        <label for="apelido">Usuario:</label><input type="text" name="apelido" id="apelido" /><button id="conn">Connectar</button>
+        <br /><label for="mensagem">Para___:</label><input type="text" name="para" id="para" maxlength="100" />
+
+        <div id="chatWindow" style="width:625px; height: 300px; overflow: scroll; border: 1px solid grey"></div><br />
+        <label for="mensagem">Mensagem:</label><input type="text" name="mensagem" id="mensagem" maxlength="300" style="width:900px"></input><br />
+
+    </div>
+</div>
+<!-- Referenciando os scripts adicionados ao Bundle -->
+<script src="~/Scripts/jquery.signalR-2.2.1.js"></script>
+
+
+
+
+
+<!-- Referencia para o script de Hub criado automaticamente -->
+<script src='/signalr/hubs'></script>
+
+<script type="text/javascript">
+
+    $(function () {
+
+        // Declarando um proxy de referencia ao Hub
+
+        var chatHubs = $.connection.ChatHub;
+
+
+
+        // Criando a função que será chamada pelo Hub para distribuir as mensagens aos clientes.
+
+        // Por convenção as chamadas aos métodos são feitas em "camelCase"
+        chatHubs.client.online = function (name, id) {
+            // Update list of users
+            if (name == $('#apelido').val()) {
+                if ($('#onlineList div[id=' + name + ']')[0] == null) {
+                    $('#onlineList').append('<div id="' + name + '" class="border" style="color:red">You: ' + name + '</div>');
+                }
+            } else {
+                if ($('#onlineList div[id=' + name + ']')[0] == null) {
+                    $('#onlineList').append('<div id="' + name + '"  class="border">' + name + '</div>');
+                    $("#users").append('<option value="' + name + '">' + name + '</option>');
+                }
+
+            }
+        };
+
+        chatHubs.client.disconnected = function (name) {
+            //Calls when someone leaves the page
+            $('#chats').append('<div class="border"><i>' + name + ' leaves chatroom</i></div>');
+            $('#onlineList div').remove(":contains('" + name + "')");
+            $("#users option").remove(":contains('" + name + "')");
+        }
+
+        chatHubs.client.broadcastMessage = function (toUser, name, message) {
+
+
+
+            // Area do chat
+
+            var chatWin = $("#chatWindow");
+
+
+
+            // Publicando a mensagem no chat
+
+            chatWin.html(chatWin.html() + "<b>" + name + "</b>: " + message + "<br />");
+
+        };
+
+
+
+        // Iniciando a conexão com o Hub
+        $('#conn').click(function (response) {
+            chatHubs.server.online($('#apelido').val(), $.connection.hub.id);
+        });
+        $.connection.hub.start().done(function () {
+            chatHubs.server.notify($('#apelido').val(), $.connection.hub.id);
+            $(document).keypress(function (e) {
+
+                if (e.which == 13) {
+
+                    chatHubs.server.notify($('#apelido').val(), $.connection.hub.id);
+                    chatHubs.server.private($("#para").val(), $("#apelido").val(), $("#mensagem").val());
+                    // Chamando o método de transmissão de mensagem no Hub
+
+                    // Limpando o texto da mensagem.
+
+                    $("#mensagem").val("");
+
+                }
+
+            });
+
+        });
+
+
+
+        // Validando o botão enter
+
+
+
+    });
+
+</script>
